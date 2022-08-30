@@ -3,19 +3,26 @@
 require 'test_helper'
 
 describe OpenTelemetryPropagatorPayx do
+  before do
+    ENV['OTEL_SERVICE_NAME'] = 'otel_service'
+  end
   let(:span_id) do
     '92bb3bf22852475b'
   end
 
   let(:trace_id) do
-    '80f198ee56343ba864fe8b2a57d3eff7'
+    "80f198ee56343ba864fe8b2a57d3eff7"
   end
 
   let(:trace_flags) do
     OpenTelemetry::Trace::TraceFlags::DEFAULT
   end
 
-  let(:context) do
+  let(:baggage) do
+    OpenTelemetry::Baggage
+  end
+
+  let(:payx_context) do
     OpenTelemetry::Trace.context_with_span(
       OpenTelemetry::Trace.non_recording_span(
         OpenTelemetry::Trace::SpanContext.new(
@@ -25,10 +32,6 @@ describe OpenTelemetryPropagatorPayx do
         )
       )
     )
-  end
-
-  let(:baggage) do
-    OpenTelemetry::Baggage
   end
 
   let(:propagator) do
@@ -80,10 +83,6 @@ describe OpenTelemetryPropagatorPayx do
   end
 
   describe '#extract' do
-    before do
-      ENV['OTEL_SERVICE_NAME'] = 'otel_service'
-    end
-
     describe 'given a valid txid and reqid' do
       it 'successfully extracts trace context headers and baggage' do
         context = propagator.extract(carrier, context: parent_context)
@@ -92,7 +91,6 @@ describe OpenTelemetryPropagatorPayx do
 
         _(extracted_context.hex_trace_id).must_equal(trace_id)
         _(extracted_context.hex_span_id).must_equal(span_id)
-        _(extracted_context.trace_flags).must_equal(OpenTelemetry::Trace::TraceFlags::SAMPLED)
 
         carrier.each do |key, value|
           _(extracted_baggage[key]).must_equal(value)
@@ -100,10 +98,32 @@ describe OpenTelemetryPropagatorPayx do
       end
     end
 
-    # describe 'it creates baggage' do
-    #  context = propagator.extract(carrier, context: parent_context)
-    #  extracted_context = OpenTelemetry::Trace.current_span(context).context
-    #
-    # end
+    describe 'given an invalid txid' do
+      it 'returns context unmodified' do
+        
+        carrier['x-payx-txid'] = nil
+        context = propagator.extract(carrier, context: parent_context)
+        _(parent_context).must_equal(context)
+      end
+    end
+  end
+
+  describe '#inject' do
+    describe 'context originated from a Payx t10y service' do
+      it 'injects original values as headers' do
+        
+        payx_context_with_baggage = OpenTelemetry::Baggage.build(context: payx_context) do |builder|
+          carrier.each do |key,value|
+            builder.set_value(key,value)
+          end
+        end
+        carrier = {}
+        propagator.inject(carrier, context: payx_context_with_baggage)
+
+        _(carrier.fetch('x-payx-txid')).must_equal(trace_id_header)
+        _(carrier.fetch('x-payx-reqid')).must_equal(req_id_header)
+
+      end
+    end
   end
 end
