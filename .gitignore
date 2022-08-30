@@ -13,6 +13,7 @@
 # Used by dotenv library to load environment variables.
 # .env
 
+test_holder
 # Ignore Byebug command history file.
 .byebug_history
 
