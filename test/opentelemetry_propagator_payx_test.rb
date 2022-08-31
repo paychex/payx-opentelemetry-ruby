@@ -3,9 +3,6 @@
 require 'test_helper'
 
 describe OpenTelemetryPropagatorPayx do
-  before do
-    ENV['OTEL_SERVICE_NAME'] = 'otel_service'
-  end
   let(:span_id) do
     '92bb3bf22852475b'
   end
@@ -22,7 +19,7 @@ describe OpenTelemetryPropagatorPayx do
     OpenTelemetry::Baggage
   end
 
-  let(:payx_context) do
+  let(:context) do
     OpenTelemetry::Trace.context_with_span(
       OpenTelemetry::Trace.non_recording_span(
         OpenTelemetry::Trace::SpanContext.new(
@@ -70,6 +67,10 @@ describe OpenTelemetryPropagatorPayx do
     'a5ee90d7-dded-48c9-b1c9-ffaaaa1a1229'
   end
 
+  let (:cnsmr) do
+    'otel_service'
+  end
+
   let(:carrier) do
     {
       'x-payx-txid' => trace_id_header,
@@ -112,17 +113,29 @@ describe OpenTelemetryPropagatorPayx do
     describe 'context originated from a Payx t10y service' do
       it 'injects original values as headers' do
         
-        payx_context_with_baggage = OpenTelemetry::Baggage.build(context: payx_context) do |builder|
+        payx_context_with_baggage = OpenTelemetry::Baggage.build(context: context) do |builder|
           carrier.each do |key,value|
             builder.set_value(key,value)
           end
         end
         carrier = {}
         propagator.inject(carrier, context: payx_context_with_baggage)
+        OpenTelemetry::Baggage.values(context: payx_context_with_baggage).each do |key,value|
+          if key == 'x-payx-cnsmr'
+            _(carrier.fetch(key)).must_equal(cnsmr)
+          else
+            _(carrier.fetch(key)).must_equal(value)
+          end
+        end
+      end
+    end
 
-        _(carrier.fetch('x-payx-txid')).must_equal(trace_id_header)
-        _(carrier.fetch('x-payx-reqid')).must_equal(req_id_header)
-
+    describe 'context originated from otel service' do
+      it 'injects otel values as headers' do
+        propagator.inject(carrier, context: context)
+        _(carrier.fetch('x-payx-txid')).must_equal(trace_id)
+        _(carrier.fetch('x-payx-reqid')).must_equal(span_id)
+        _(carrier.fetch('x-payx-cnsmr')).must_equal(cnsmr)
       end
     end
   end

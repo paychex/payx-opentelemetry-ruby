@@ -15,6 +15,7 @@ class OpenTelemetryPropagatorPayx
   include ::OpenTelemetry
   include ::TraceHeaders
   CNSMR = ENV.fetch('OTEL_SERVICE_NAME', nil)
+
   # Extract trace context from the supplied carrier.
   # If extraction fails, the original context will be returned
   #
