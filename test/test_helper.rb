@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 ENV['OTEL_SERVICE_NAME'] = 'otel_service'
 ENV['ENABLE_COVERAGE'] = '1'
 if ENV['ENABLE_COVERAGE'].to_i.positive?

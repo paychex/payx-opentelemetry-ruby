@@ -8,7 +8,7 @@ describe OpenTelemetryPropagatorPayx do
   end
 
   let(:trace_id) do
-    "80f198ee56343ba864fe8b2a57d3eff7"
+    '80f198ee56343ba864fe8b2a57d3eff7'
   end
 
   let(:trace_flags) do
@@ -67,7 +67,7 @@ describe OpenTelemetryPropagatorPayx do
     'a5ee90d7-dded-48c9-b1c9-ffaaaa1a1229'
   end
 
-  let (:cnsmr) do
+  let(:cnsmr) do
     'otel_service'
   end
 
@@ -101,10 +101,25 @@ describe OpenTelemetryPropagatorPayx do
 
     describe 'given an invalid txid' do
       it 'returns context unmodified' do
-        
         carrier['x-payx-txid'] = nil
         context = propagator.extract(carrier, context: parent_context)
         _(parent_context).must_equal(context)
+      end
+    end
+
+    describe 'given an invalid reqid' do
+      it 'generates a new span id and continues' do
+        carrier['x-payx-reqid'] = "unk,1234"
+        context = propagator.extract(carrier, context: parent_context)
+        extracted_context = OpenTelemetry::Trace.current_span(context).context
+        extracted_baggage = OpenTelemetry::Baggage.values(context: context)
+
+        _(extracted_context.hex_trace_id).must_equal(trace_id)
+        _(extracted_context.hex_span_id).wont_equal(OpenTelemetry::Trace::INVALID_SPAN_ID)
+
+        carrier.each do |key, value|
+          _(extracted_baggage[key]).must_equal(value)
+        end
       end
     end
   end
@@ -112,15 +127,14 @@ describe OpenTelemetryPropagatorPayx do
   describe '#inject' do
     describe 'context originated from a Payx t10y service' do
       it 'injects original values as headers' do
-        
         payx_context_with_baggage = OpenTelemetry::Baggage.build(context: context) do |builder|
-          carrier.each do |key,value|
-            builder.set_value(key,value)
+          carrier.each do |key, value|
+            builder.set_value(key, value)
           end
         end
         carrier = {}
         propagator.inject(carrier, context: payx_context_with_baggage)
-        OpenTelemetry::Baggage.values(context: payx_context_with_baggage).each do |key,value|
+        OpenTelemetry::Baggage.values(context: payx_context_with_baggage).each do |key, value|
           if key == 'x-payx-cnsmr'
             _(carrier.fetch(key)).must_equal(cnsmr)
           else
