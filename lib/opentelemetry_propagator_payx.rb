@@ -15,6 +15,8 @@ class OpenTelemetryPropagatorPayx
   include ::OpenTelemetry
   include ::TraceHeaders
   CNSMR = ENV.fetch('OTEL_SERVICE_NAME', nil)
+  UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.freeze
+
   # Extract trace context from the supplied carrier.
   # If extraction fails, the original context will be returned
   #
@@ -33,8 +35,15 @@ class OpenTelemetryPropagatorPayx
 
     return context unless trace_id
 
+    if UUID_REGEX.match?(span_id)
+      span_id = to_span_id(span_id.gsub('-', '').slice(0,16))
+    else
+      OpenTelemetry.logger.debug "Incoming req ID is: #{span_id}"
+      OpenTelemetry.logger.debug 'ReqId was not a valid UUID, generating new reqId.'
+      span_id = Trace.generate_span_id
+    end
+
     trace_id = to_trace_id(trace_id.gsub('-', ''))
-    span_id  = to_span_id(span_id.gsub('-', '').slice(0, 16))
 
     span_context = Trace::SpanContext.new(
       trace_id: trace_id,
@@ -42,9 +51,10 @@ class OpenTelemetryPropagatorPayx
       trace_flags: Trace::TraceFlags::SAMPLED,
       remote: true
     )
-    span = OpenTelemetry::Trace.non_recording_span(span_context)
+
+    span = Trace.non_recording_span(span_context)
     context = context_with_extracted_baggage(carrier, context, getter)
-    OpenTelemetry::Trace.context_with_span(span, parent_context: context)
+    Trace.context_with_span(span, parent_context: context)
   end
 
   # Inject trace context into the supplied carrier.
@@ -55,7 +65,7 @@ class OpenTelemetryPropagatorPayx
   #   will be used to write context into the carrier, otherwise the default
   #   text map setter will be used.
   def inject(carrier, context: Context.current, setter: Context::Propagation.text_map_setter)
-    span_context = OpenTelemetry::Trace.current_span(context).context
+    span_context = Trace.current_span(context).context
     return unless span_context.valid?
 
     # Could be overwritten if found in baggage
