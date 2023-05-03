@@ -2,7 +2,7 @@
 
 require 'test_helper'
 
-describe OpenTelemetryPropagatorPayx do
+describe Propagator do
   let(:span_id) do
     '92bb3bf22852475b'
   end
@@ -32,7 +32,7 @@ describe OpenTelemetryPropagatorPayx do
   end
 
   let(:propagator) do
-    OpenTelemetryPropagatorPayx.new
+    Propagator.new
   end
 
   let(:parent_context) do
@@ -109,7 +109,7 @@ describe OpenTelemetryPropagatorPayx do
 
     describe 'given an invalid reqid' do
       it 'generates a new span id and continues' do
-        carrier['x-payx-reqid'] = "unk,1234"
+        carrier['x-payx-reqid'] = 'unk,1234'
         context = propagator.extract(carrier, context: parent_context)
         extracted_context = OpenTelemetry::Trace.current_span(context).context
         extracted_baggage = OpenTelemetry::Baggage.values(context: context)
@@ -117,6 +117,22 @@ describe OpenTelemetryPropagatorPayx do
         _(extracted_context.hex_trace_id).must_equal(trace_id)
         _(extracted_context.hex_span_id).wont_equal(OpenTelemetry::Trace::INVALID_SPAN_ID)
 
+        carrier.each do |key, value|
+          _(extracted_baggage[key]).must_equal(value)
+        end
+      end
+    end
+
+    describe 'given a reqid already in spanid format' do
+      it 'sets spanid accordingly and continues' do
+        carrier['x-payx-reqid'] = span_id
+        context = propagator.extract(carrier, context: parent_context)
+        extracted_context = OpenTelemetry::Trace.current_span(context).context
+        extracted_baggage = OpenTelemetry::Baggage.values(context: context)
+
+        _(extracted_context.hex_trace_id).must_equal(trace_id)
+        _(extracted_context.hex_span_id).wont_equal(OpenTelemetry::Trace::INVALID_SPAN_ID)
+        _(extracted_context.hex_span_id).must_equal(span_id)
         carrier.each do |key, value|
           _(extracted_baggage[key]).must_equal(value)
         end
