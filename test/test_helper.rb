@@ -11,6 +11,6 @@ end
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'minitest/autorun'
 require 'opentelemetry-api'
-require 'opentelemetry_propagator_payx'
+require 'opentelemetry_payx'
 
 OpenTelemetry.logger = Logger.new(File::NULL)

@@ -1,22 +1,20 @@
 # frozen_string_literal: true
 
-# SPDX-License-Identifier: Apache-2.0
-
 require 'cgi'
 require 'opentelemetry-common'
 require 'opentelemetry-api'
-require_relative './Constants/trace_headers'
+require_relative './trace_headers'
+
 # Author Shane Smithrand <ssmithrand@paychex.com>
 # Based on the Jaeger Propagator and Mike Richards' <mrichars3@paychex.com> .NET Payx Propagator
 # The OpenTelemetry module provides global accessors for telemetry objects.
 # See the documentation for the `opentelemetry-api` gem for details.
-
-class OpenTelemetryPropagatorPayx
+class Propagator
   include ::OpenTelemetry
   include ::TraceHeaders
   CNSMR = ENV.fetch('OTEL_SERVICE_NAME', nil)
   UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.freeze
-
+  OTEL_SPAN_ID_REGEX = /^[0-9a-f]{16}$/.freeze
   # Extract trace context from the supplied carrier.
   # If extraction fails, the original context will be returned
   #
@@ -36,10 +34,12 @@ class OpenTelemetryPropagatorPayx
     return context unless trace_id
 
     if UUID_REGEX.match?(span_id)
-      span_id = to_span_id(span_id.gsub('-', '').slice(0,16))
+      span_id = to_span_id(span_id.gsub('-', '').slice(0, 16))
+    elsif OTEL_SPAN_ID_REGEX.match?(span_id)
+      span_id = to_span_id(span_id)
     else
       OpenTelemetry.logger.debug "Incoming req ID is: #{span_id}"
-      OpenTelemetry.logger.debug 'ReqId was not a valid UUID, generating new reqId.'
+      OpenTelemetry.logger.debug 'ReqId was not a valid UUID or Otel Span Id, generating new reqId.'
       span_id = Trace.generate_span_id
     end
 
