@@ -3,9 +3,9 @@ PATH
   specs:
     opentelemetry-payx (0.0.1)
       cgi
-      opentelemetry-api
-      opentelemetry-common
-      opentelemetry-sdk
+      opentelemetry-api (~> 1.1.0)
+      opentelemetry-common (~> 0.19.6)
+      opentelemetry-sdk (~> 1.2.0)
 
 GEM
   remote: https://rubygems.org/
@@ -44,9 +44,9 @@ GEM
       rubocop-ast (>= 1.28.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 3.0)
-    rubocop-ast (1.28.0)
+    rubocop-ast (1.28.1)
       parser (>= 3.2.1.0)
-    rubocop-minitest (0.30.0)
+    rubocop-minitest (0.31.0)
       rubocop (>= 1.39, < 2.0)
     rubocop-rake (0.6.0)
       rubocop (~> 1.0)

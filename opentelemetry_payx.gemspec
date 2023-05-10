@@ -12,9 +12,9 @@ Gem::Specification.new do |s|
   s.required_ruby_version = 3.1
 
   s.add_dependency 'cgi'
-  s.add_dependency 'opentelemetry-api'
-  s.add_dependency 'opentelemetry-common'
-  s.add_dependency 'opentelemetry-sdk'
+  s.add_dependency 'opentelemetry-api', '~> 1.1.0'
+  s.add_dependency 'opentelemetry-common', '~> 0.19.6'
+  s.add_dependency 'opentelemetry-sdk', '~> 1.2.0'
 
   s.add_development_dependency 'bundler', '~> 2.4'
   s.add_development_dependency 'minitest', '~> 5.18.0'
